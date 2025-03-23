@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jeu Solo Leveling Ultimate - Version Finale</title>
+  <style>
+    /* ===========================
+       Style du jeu
+       =========================== */
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e272e;
+      color: #f5f6fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    #game-container {
+      background-color: #2f3640;
+      width: 900px;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+      text-align: center;
+      position: relative;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #stats, #monster-stats, #action-panel, #levelup-panel, #shop-panel, #inventory-panel, #equipment-panel, #spells-panel {
+      margin: 15px 0;
+      padding: 10px;
+      border: 1px solid #718093;
+      border-radius: 5px;
+      background-color: #353b48;
+    }
+    #stats p, #monster-stats p {
+      margin: 5px 0;
+    }
+    #battle-log {
+      height: 200px;
+      overflow-y: auto;
+      background-color: #353b48;
+      border: 1px solid #718093;
+      border-radius: 5px;
+      padding: 10px;
+      text-align: left;
+      font-size: 14px;
+    }
+    .button {
+      background-color: #00a8ff;
+      border: none;
+      padding: 10px 20px;
+      margin: 5px;
+      font-size: 16px;
+      color: #fff;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+    .button:hover {
+      background-color: #0097e6;
+    }
+    #game-over {
+      display: none;
+      margin-top: 20px;
+    }
+    #levelup-panel, #shop-panel, #inventory-panel, #equipment-panel, #spells-panel {
+      display: none;
+    }
+    /* Boutique, inventaire, équipement et sorts */
+    #shop-panel ul, #inventory-panel ul, #equipment-panel ul, #spells-panel ul {
+      list-style: none;
+      padding: 0;
+    }
+    #shop-panel li, #inventory-panel li, #equipment-panel li, #spells-panel li {
+      margin: 5px 0;
+      border-bottom: 1px solid #718093;
+      padding-bottom: 5px;
+    }
+    .item-btn {
+      background-color: #e1b12c;
+      border: none;
+      padding: 5px 10px;
+      margin-left: 10px;
+      cursor: pointer;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    .item-btn:hover {
+      background-color: #f5cd79;
+    }
+    /* Panneaux Equipment et Spells positionnés */
+    #equipment-panel, #spells-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 250px;
+      background-color: #2f3640;
+    }
+    /* Bouton de fermeture pour panneaux mobiles */
+    .close-btn {
+      background-color: #c23616;
+      margin-top: 10px;
+    }
+    .close-btn:hover {
+      background-color: #e84118;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1>Jeu Solo Leveling Ultimate - Version Finale</h1>
+    <!-- Statistiques du joueur -->
+    <div id="stats">
+      <p>Nom du joueur : <span id="player-name">Héros</span></p>
+      <p>Niveau : <span id="player-level">1</span></p>
+      <p>PV : <span id="player-hp">100</span> / <span id="player-maxhp">100</span></p>
+      <p>Mana : <span id="player-mana">100</span> / <span id="player-maxmana">100</span></p>
+      <p>XP : <span id="player-xp">0</span> / <span id="xp-threshold">50</span></p>
+      <p>Gold : <span id="player-gold">0</span></p>
+      <p>Points de compétence : <span id="skill-points">0</span></p>
+      <p>Pouvoirs : <span id="player-power">0</span></p>
+      <p>
+        Force : <span id="stat-force">10</span> (Augmente les dégâts d'attaque) |
+        Dextérité : <span id="stat-dex">10</span> (Améliore l'esquive) |
+        Constitution : <span id="stat-con">10</span> (Augmente les PV max) |
+        Intelligence : <span id="stat-int">10</span> (Augmente le Mana max et les dégâts des sorts)
+      </p>
+    </div>
+    <!-- Statistiques du monstre -->
+    <div id="monster-stats">
+      <p>Monstre : <span id="monster-name">-</span></p>
+      <p>PV : <span id="monster-hp">-</span></p>
+      <p>Type : <span id="monster-type">-</span></p>
+    </div>
+    <!-- Log de combat -->
+    <div id="battle-log"></div>
+    <!-- Panneau d'actions -->
+    <div id="action-panel">
+      <button class="button" id="attack-btn">Attaquer</button>
+      <button class="button" id="spell-btn">Sorts</button>
+      <button class="button" id="item-btn">Utiliser un objet</button>
+      <button class="button" id="defend-btn">Défendre</button>
+      <button class="button" id="shop-btn">Boutique</button>
+      <button class="button" id="equip-btn">Équipement</button>
+      <button class="button" id="next-turn-btn" style="display: none;">Tour suivant</button>
+    </div>
+    <!-- Panneau de montée en niveau -->
+    <div id="levelup-panel">
+      <h2>Montée en niveau !</h2>
+      <p>Vous venez de monter de niveau et gagnez 5 points de compétence et 3 points de pouvoir.<br>
+      Répartissez-les pour améliorer vos statistiques :</p>
+      <p>
+        <button class="button" data-stat="force">+ Force</button> <!-- Augmente les dégâts d'attaque -->
+        <button class="button" data-stat="dex">+ Dextérité</button> <!-- Améliore l'esquive -->
+        <button class="button" data-stat="con">+ Constitution</button> <!-- Augmente les PV max -->
+        <button class="button" data-stat="int">+ Intelligence</button> <!-- Augmente le Mana max et les dégâts des sorts -->
+      </p>
+      <p>Points de compétence restants : <span id="points-remaining">0</span></p>
+      <button class="button" id="levelup-close-btn">Terminer</button>
+    </div>
+    <!-- Panneau de la Boutique -->
+    <div id="shop-panel">
+      <h2>Boutique</h2>
+      <ul id="shop-list"></ul>
+      <button class="button close-btn" id="close-shop-btn">Fermer</button>
+    </div>
+    <!-- Panneau de l'Inventaire -->
+    <div id="inventory-panel">
+      <h2>Inventaire</h2>
+      <ul id="inventory-list"></ul>
+      <button class="button close-btn" id="close-inv-btn">Fermer</button>
+    </div>
+    <!-- Panneau Equipment -->
+    <div id="equipment-panel">
+      <h3>Équipement</h3>
+      <ul id="equipment-list">
+        <li>Arme : <span id="equip-weapon">Aucune</span></li>
+        <li>Armure : <span id="equip-armor">Aucune</span></li>
+      </ul>
+      <button class="button" id="unequip-weapon-btn">Déséquiper Arme</button>
+      <button class="button" id="unequip-armor-btn">Déséquiper Armure</button>
+      <button class="button close-btn" id="close-equip-btn">Fermer</button>
+    </div>
+    <!-- Panneau des Sorts -->
+    <div id="spells-panel">
+      <h3>Sorts disponibles</h3>
+      <ul id="spells-list"></ul>
+      <button class="button close-btn" id="close-spells-btn">Fermer</button>
+    </div>
+    <!-- Écran de défaite -->
+    <div id="game-over">
+      <h2>Game Over</h2>
+      <button class="button" id="restart-btn">Recommencer</button>
+    </div>
+  </div>
+
+  <script>
+    /**********************************
+     * Déclaration des variables
+     **********************************/
+    // Données initiales du joueur
+    let player = {
+      name: "Héros",
+      level: 1,
+      xp: 0,
+      gold: 0,
+      hp: 100,
+      maxhp: 100,  // 100 + (con-10)*10
+      mana: 100,
+      maxmana: 100, // 100 + (int-10)*10
+      xpThreshold: 50, // Seuil XP pour le niveau 1 : 50, puis 100, 200, etc.
+      skillPoints: 0,
+      powerPoints: 0, // Nouveaux points de pouvoir
+      stats: {
+        force: 10,
+        dex: 10,
+        con: 10,
+        int: 10
+      },
+      inventory: ["Potion de soin", "Potion de mana"],
+      equipment: {
+        weapon: null,
+        armor: null
+      }
+    };
+
+    // Compteur pour forcer l'apparition d'un boss (10 combats)
+    let combatCounter = 10;
+
+    // Données du monstre (sera généré lors du combat)
+    let monster = null;
+
+    // Tour de jeu
+    let playerTurn = true;
+    let turnInProgress = false;
+    let defending = false;
+
+    /**********************************
+     * Tableaux des types de monstres pondérés
+     * (10 nouveaux monstres ajoutés)
+     **********************************/
+    const monsterTypes = [
+      // Faibles
+      { name: "Gobelin", baseHp: 40, baseAttack: 8, xpReward: 40, goldReward: 15, type: "Faible", weight: 40},
+      { name: "Squelette", baseHp: 35, baseAttack: 7, xpReward: 35, goldReward: 10, type: "Faible", weight: 35 },
+      { name: "Slime", baseHp: 30, baseAttack: 6, xpReward: 30, goldReward: 10, type: "Faible", weight: 45 },
+      { name: "Rat Géant", baseHp: 25, baseAttack: 5, xpReward: 25, goldReward: 8, type: "Faible", weight: 50 },
+      { name: "Zombie", baseHp: 50, baseAttack: 9, xpReward: 45, goldReward: 20, type: "Faible", weight: 30 },
+      // Moyens
+      { name: "Orc", baseHp: 70, baseAttack: 13, xpReward: 70, goldReward: 30, type: "Moyen", weight: 25 },
+      { name: "Troll", baseHp: 90, baseAttack: 15, xpReward: 80, goldReward: 35, type: "Moyen", weight: 20 },
+      { name: "Loup Géant", baseHp: 60, baseAttack: 12, xpReward: 60, goldReward: 25, type: "Moyen", weight: 25 },
+      { name: "Bandit", baseHp: 55, baseAttack: 11, xpReward: 55, goldReward: 20, type: "Moyen", weight: 30 },
+      { name: "Berserker", baseHp: 80, baseAttack: 17, xpReward: 75, goldReward: 40, type: "Moyen", weight: 15 },
+      // Forts
+      { name: "Vampire", baseHp: 85, baseAttack: 16, xpReward: 100, goldReward: 40, type: "Fort", weight: 10 },
+      { name: "Gargouille", baseHp: 95, baseAttack: 18, xpReward: 110, goldReward: 45, type: "Fort", weight: 10 },
+      { name: "Loup-Garou", baseHp: 100, baseAttack: 19, xpReward: 120, goldReward: 50, type: "Fort", weight: 8 },
+      { name: "Démon Mineur", baseHp: 110, baseAttack: 20, xpReward: 130, goldReward: 55, type: "Fort", weight: 8 },
+      { name: "Géant de Pierre", baseHp: 120, baseAttack: 22, xpReward: 140, goldReward: 60, type: "Fort", weight: 6 },
+      // Boss spéciaux (apparition forcée par compteur)
+      { name: "Serpent", baseHp: 240, baseAttack: 24, xpReward: 200, goldReward: 140, type: "Boss", weight: 4 },
+      { name: "Roi Démon", baseHp: 500, baseAttack: 60, xpReward: 1500, goldReward: 9000, type: "Boss", weight: 2 },
+      { name: "Birou la Fourmis", baseHp: 950, baseAttack: 120, xpReward: 3000, goldReward: 1800, type: "Boss", weight: 1 },
+	  { name: "Rein des Fourmis", baseHp: 320, baseAttack: 30, xpReward: 400, goldReward: 250, type: "Boss", weight: 3 },
+      // Nouveaux monstres (10 nouveaux)
+      { name: "Esprit Maléfique", baseHp: 65, baseAttack: 14, xpReward: 75, goldReward: 30, type: "Moyen", weight: 20 },
+      { name: "Ombre", baseHp: 55, baseAttack: 12, xpReward: 65, goldReward: 25, type: "Moyen", weight: 25 },
+      { name: "Goule", baseHp: 75, baseAttack: 15, xpReward: 85, goldReward: 35, type: "Fort", weight: 15 },
+      { name: "Harpie", baseHp: 50, baseAttack: 13, xpReward: 70, goldReward: 30, type: "Moyen", weight: 20 },
+      { name: "Élémentaire de Feu", baseHp: 90, baseAttack: 20, xpReward: 95, goldReward: 45, type: "Fort", weight: 10 },
+      { name: "Élémentaire de Glace", baseHp: 90, baseAttack: 20, xpReward: 95, goldReward: 45, type: "Fort", weight: 10 },
+      { name: "Golem de Fer", baseHp: 130, baseAttack: 24, xpReward: 150, goldReward: 70, type: "Fort", weight: 5 },
+      { name: "Mage Noir", baseHp: 70, baseAttack: 18, xpReward: 90, goldReward: 40, type: "Fort", weight: 8 },
+      { name: "Chimère", baseHp: 110, baseAttack: 21, xpReward: 130, goldReward: 60, type: "Fort", weight: 7 },
+      { name: "Titan", baseHp: 150, baseAttack: 26, xpReward: 180, goldReward: 80, type: "Boss", weight: 2 }
+    ];
+
+    /**********************************
+     * Boutique : Objets à vendre
+     **********************************/
+    const shopItems = [
+      { name: "Potion de soin", type: "consommable", effect: "heal", value: 50, price: 20, currency: "gold" },
+      { name: "Potion de mana", type: "consommable", effect: "mana", value: 50, price: 20, currency: "gold" },
+      { name: "Épée en fer", type: "arme", effect: "equip", bonus: 5, price: 100, currency: "gold" },
+      { name: "Armure de cuir", type: "armure", effect: "equip", bonus: 5, price: 100, currency: "gold" },
+      { name: "Épée d'acier", type: "arme", effect: "equip", bonus: 10, price: 200, currency: "gold" },
+      { name: "Armure renforcée", type: "armure", effect: "equip", bonus: 10, price: 200, currency: "gold" },
+      { name: "Potion de soin supérieure", type: "consommable", effect: "heal", value: 150, price: 50, currency: "gold" },
+      { name: "Potion de mana supérieure", type: "consommable", effect: "mana", value: 150, price: 50, currency: "gold" },
+      { name: "Hache de guerre", type: "arme", effect: "equip", bonus: 12, price: 300, currency: "gold" },
+      { name: "Armure de plaques", type: "armure", effect: "equip", bonus: 12, price: 300, currency: "gold" },
+      { name: "Parchemin d'invulnérabilité", type: "consommable", effect: "invuln", value: 2, price: 150, currency: "gold" },
+      { name: "Parchemin de puissance", type: "consommable", effect: "boost", value: 5, price: 150, currency: "gold" },
+      { name: "Bouclier mystique", type: "armure", effect: "equip", bonus: 15, price: 400, currency: "gold" },
+      { name: "Lame de feu", type: "arme", effect: "equip", bonus: 15, price: 400, currency: "gold" },
+      { name: "Parchemin de régénération", type: "consommable", effect: "regen", value: 30, price: 120, currency: "gold" },
+      // Nouveaux objets achetables avec les Pouvoirs
+      { name: "Amélioration de pouvoir 1", type: "upgrade", effect: "power", bonus: 2, price: 1, currency: "power" },
+      { name: "Amélioration de pouvoir 2", type: "upgrade", effect: "power", bonus: 3, price: 2, currency: "power" },
+      { name: "Amélioration de pouvoir 3", type: "upgrade", effect: "power", bonus: 4, price: 3, currency: "power" },
+      { name: "Amélioration de pouvoir 4", type: "upgrade", effect: "power", bonus: 5, price: 4, currency: "power" },
+      { name: "Amélioration de pouvoir 5", type: "upgrade", effect: "power", bonus: 6, price: 5, currency: "power" },
+      { name: "Amélioration de pouvoir 6", type: "upgrade", effect: "power", bonus: 7, price: 6, currency: "power" },
+      { name: "Amélioration de pouvoir 7", type: "upgrade", effect: "power", bonus: 8, price: 7, currency: "power" },
+      { name: "Amélioration de pouvoir 8", type: "upgrade", effect: "power", bonus: 9, price: 8, currency: "power" },
+      { name: "Amélioration de pouvoir 9", type: "upgrade", effect: "power", bonus: 10, price: 9, currency: "power" },
+      { name: "Amélioration de pouvoir 10", type: "upgrade", effect: "power", bonus: 11, price: 10, currency: "power" }
+    ];
+
+    /**********************************
+     * Sorts disponibles (10 sorts au total)
+     **********************************/
+    const spells = [
+      { name: "Boule de Feu", cost: 20, baseDamage: 30 },
+      { name: "Éclair", cost: 25, baseDamage: 35 },
+      { name: "Glace", cost: 30, baseDamage: 40 },
+      { name: "Flamme éternelle", cost: 35, baseDamage: 45 },
+      { name: "Foudre divine", cost: 40, baseDamage: 50 },
+      { name: "Explosion psychique", cost: 45, baseDamage: 55 },
+      { name: "Vague de froid", cost: 30, baseDamage: 40 },
+      { name: "Rayon de mana", cost: 20, baseDamage: 25 },
+      { name: "Onde de choc", cost: 25, baseDamage: 30 },
+      { name: "Tempête d'énergie", cost: 40, baseDamage: 50 }
+    ];
+
+    /**********************************
+     * Fonctions d'interface utilisateur
+     **********************************/
+    function updatePlayerUI() {
+      document.getElementById("player-level").textContent = player.level;
+      document.getElementById("player-xp").textContent = player.xp;
+      document.getElementById("player-gold").textContent = player.gold;
+      document.getElementById("player-hp").textContent = player.hp;
+      document.getElementById("player-maxhp").textContent = player.maxhp;
+      document.getElementById("player-mana").textContent = player.mana;
+      document.getElementById("player-maxmana").textContent = player.maxmana;
+      document.getElementById("skill-points").textContent = player.skillPoints;
+      document.getElementById("stat-force").textContent = player.stats.force;
+      document.getElementById("stat-dex").textContent = player.stats.dex;
+      document.getElementById("stat-con").textContent = player.stats.con;
+      document.getElementById("stat-int").textContent = player.stats.int;
+      document.getElementById("xp-threshold").textContent = player.xpThreshold;
+      document.getElementById("player-power").textContent = player.powerPoints;
+    }
+
+    function updateMonsterUI() {
+      if (monster) {
+        document.getElementById("monster-name").textContent = monster.name;
+        document.getElementById("monster-hp").textContent = monster.hp;
+        document.getElementById("monster-type").textContent = monster.type;
+      } else {
+        document.getElementById("monster-name").textContent = "-";
+        document.getElementById("monster-hp").textContent = "-";
+        document.getElementById("monster-type").textContent = "-";
+      }
+    }
+
+    function logMessage(message) {
+      let p = document.createElement("p");
+      p.textContent = message;
+      document.getElementById("battle-log").appendChild(p);
+      document.getElementById("battle-log").scrollTop = document.getElementById("battle-log").scrollHeight;
+    }
+
+    function clearBattleLog() {
+      document.getElementById("battle-log").innerHTML = "";
+    }
+
+    /**********************************
+     * Génération pondérée des monstres avec difficulté exponentielle
+     **********************************/
+    function generateMonster(boost = false, forceBoss = false) {
+      let difficultyFactor = Math.pow(1.1, player.level);
+      // Si forcer un boss, sélectionne parmi les types Boss uniquement
+      if (forceBoss) {
+        let bossTypes = monsterTypes.filter(mon => mon.type === "Boss");
+        let randIndex = Math.floor(Math.random() * bossTypes.length);
+        let selected = bossTypes[randIndex];
+        return {
+          name: selected.name,
+          hp: Math.floor((selected.baseHp + player.level * 5) * difficultyFactor * (boost ? 1.2 : 1)),
+          attack: Math.floor((selected.baseAttack + player.level * 2) * difficultyFactor * (boost ? 1.2 : 1)),
+          xpReward: Math.floor((selected.xpReward + player.level * 10) * difficultyFactor * (boost ? 1.2 : 1)),
+          goldReward: Math.floor((selected.goldReward + player.level * 5) * (boost ? 1.2 : 1)),
+          type: selected.type
+        };
+      }
+      // Génération normale pondérée
+      let totalWeight = 0;
+      let adjustedWeights = monsterTypes.map(mon => {
+        let weight = mon.weight;
+        if (player.level >= 10 && (mon.type === "Fort" || mon.type === "Boss")) {
+          weight *= 1.5;
+        }
+        totalWeight += weight;
+        return weight;
+      });
+      let rand = Math.random() * totalWeight;
+      let selected;
+      for (let i = 0; i < monsterTypes.length; i++) {
+        rand -= adjustedWeights[i];
+        if (rand <= 0) {
+          selected = monsterTypes[i];
+          break;
+        }
+      }
+      let multiplier = boost ? 1.2 : 1;
+      return {
+        name: selected.name,
+        hp: Math.floor((selected.baseHp + player.level * 5) * difficultyFactor * multiplier),
+        attack: Math.floor((selected.baseAttack + player.level * 2) * difficultyFactor * multiplier),
+        xpReward: Math.floor((selected.xpReward + player.level * 10) * difficultyFactor * multiplier),
+        goldReward: Math.floor((selected.goldReward + player.level * 5) * multiplier),
+        type: selected.type
+      };
+    }
+
+    /**********************************
+     * Système de Combat Turn-Based
+     **********************************/
+    function startCombat(optionalMonster) {
+      if (player.hp <= 0) return;
+      // Si le compteur de combats est à 0, forcer l'apparition d'un boss
+      if (combatCounter <= 0) {
+        monster = generateMonster(false, true);
+        combatCounter = 10; // réinitialise le compteur
+        logMessage("C'est le moment du Boss !");
+      } else {
+        monster = optionalMonster ? optionalMonster : generateMonster();
+      }
+      updateMonsterUI();
+      clearBattleLog();
+      logMessage(`Un ${monster.name} (${monster.type}) apparaît !`);
+      playerTurn = true;
+      turnInProgress = false;
+      enableActionButtons(true);
+    }
+
+    function enableActionButtons(enable) {
+      document.getElementById("attack-btn").disabled = !enable;
+      document.getElementById("spell-btn").disabled = !enable;
+      document.getElementById("item-btn").disabled = !enable;
+      document.getElementById("defend-btn").disabled = !enable;
+      document.getElementById("shop-btn").disabled = !enable;
+      document.getElementById("equip-btn").disabled = !enable;
+      document.getElementById("next-turn-btn").style.display = enable ? "none" : "inline-block";
+    }
+
+    /**********************************
+     * Actions du joueur
+     **********************************/
+    function playerAttack() {
+      if (!playerTurn || turnInProgress) return;
+      turnInProgress = true;
+      let damage = Math.floor(player.stats.force * (1 + Math.random())) + 5;
+      monster.hp -= damage;
+      logMessage(`Vous attaquez et infligez ${damage} dégâts à ${monster.name}.`);
+      updateMonsterUI();
+      checkCombatOutcome();
+    }
+
+    function playerCastSpell() {
+      showSpellsPanel();
+    }
+
+    function castSelectedSpell(spell) {
+      if (player.mana < spell.cost) {
+        logMessage("Pas assez de mana pour ce sort !");
+        return;
+      }
+      turnInProgress = true;
+      player.mana -= spell.cost;
+      let spellDamage = Math.floor(Math.random() * player.stats.int) + spell.baseDamage;
+      monster.hp -= spellDamage;
+      logMessage(`Vous lancez ${spell.name} et infligez ${spellDamage} dégâts à ${monster.name} (Coût: ${spell.cost} Mana).`);
+      updatePlayerUI();
+      updateMonsterUI();
+      checkCombatOutcome();
+    }
+
+    function playerUseItem() {
+      showInventoryPanel();
+    }
+
+    function playerDefend() {
+      if (!playerTurn || turnInProgress) return;
+      turnInProgress = true;
+      defending = true;
+      logMessage("Vous adoptez une posture défensive pour ce tour.");
+      endPlayerTurn();
+    }
+
+    function endPlayerTurn() {
+      playerTurn = false;
+      enableActionButtons(false);
+      setTimeout(monsterTurn, 1000);
+    }
+
+    /**********************************
+     * Tour du monstre
+     **********************************/
+    function monsterTurn() {
+      if (!monster || monster.hp <= 0) {
+        winCombat();
+        return;
+      }
+      let dodgeChance = Math.max(0, (player.stats.dex - 10) * 0.05);
+      if (Math.random() < dodgeChance) {
+        logMessage(`Vous avez esquivé l'attaque de ${monster.name} !`);
+      } else {
+        let damage = Math.floor(Math.random() * monster.attack) + 5;
+        if (defending) {
+          damage = Math.floor(damage / 2);
+          logMessage("Votre défense réduit les dégâts subis !");
+          defending = false;
+        }
+        player.hp -= damage;
+        logMessage(`${monster.name} vous attaque et inflige ${damage} dégâts.`);
+      }
+      updatePlayerUI();
+      if (player.hp <= 0) {
+        gameOver();
+      } else {
+        playerTurn = true;
+        turnInProgress = false;
+        enableActionButtons(true);
+      }
+    }
+
+    function checkCombatOutcome() {
+      if (monster.hp <= 0) {
+        winCombat();
+      } else {
+        endPlayerTurn();
+      }
+    }
+
+    /**********************************
+     * Victoire et progression
+     **********************************/
+    function winCombat() {
+      logMessage(`Vous avez vaincu ${monster.name} !`);
+      // Si ce n'est pas un boss, décrémente le compteur de combats
+      if (monster.type !== "Boss") {
+        combatCounter--;
+        logMessage(`Combats restants avant Boss : ${combatCounter}`);
+      }
+      player.xp += monster.xpReward;
+      player.gold += monster.goldReward;
+      logMessage(`Gagné ${monster.xpReward} XP et ${monster.goldReward} Gold.`);
+      updatePlayerUI();
+      if (player.xp >= player.xpThreshold) {
+        levelUp();
+      } else {
+        let boost = (player.level >= 5 && Math.random() < 0.3);
+        let nextMonster = generateMonster(boost);
+        setTimeout(() => { startCombat(nextMonster); }, 2000);
+      }
+    }
+
+    function levelUp() {
+      player.level++;
+      player.xp = player.xp - player.xpThreshold;
+      player.xpThreshold = 50 * Math.pow(2, player.level - 1);
+      // Restauration totale des PV et Mana
+      player.hp = recalcMaxHP();
+      player.mana = recalcMaxMana();
+      player.skillPoints += 5;
+      player.powerPoints += 3; // Gagne 3 points de pouvoir
+      logMessage(`Félicitations ! Vous passez au niveau ${player.level}. Vos PV et Mana sont restaurés, vous gagnez 5 points de compétence et 3 points de pouvoir.`);
+      updatePlayerUI();
+      showLevelUpPanel();
+    }
+
+    function recalcMaxHP() {
+      player.maxhp = 100 + (player.stats.con - 10) * 10;
+      return player.maxhp;
+    }
+
+    function recalcMaxMana() {
+      player.maxmana = 100 + (player.stats.int - 10) * 10;
+      return player.maxmana;
+    }
+
+    /**********************************
+     * Montée en niveau et répartition des points
+     **********************************/
+    function showLevelUpPanel() {
+      document.getElementById("levelup-panel").style.display = "block";
+      document.getElementById("points-remaining").textContent = player.skillPoints;
+      enableActionButtons(false);
+    }
+
+    function allocatePoint(stat) {
+      if (player.skillPoints <= 0) return;
+      player.stats[stat] += 1;
+      player.skillPoints--;
+      logMessage(`+1 en ${stat.toUpperCase()} (Nouvelle valeur: ${player.stats[stat]})`);
+      if (stat === "con" || stat === "int") {
+        recalcMaxHP();
+        recalcMaxMana();
+      }
+      updatePlayerUI();
+      document.getElementById("points-remaining").textContent = player.skillPoints;
+    }
+
+    function closeLevelUpPanel() {
+      document.getElementById("levelup-panel").style.display = "none";
+      let nextMonster = generateMonster();
+      setTimeout(() => { startCombat(nextMonster); }, 1000);
+    }
+
+    /**********************************
+     * Boutique
+     **********************************/
+    function showShopPanel() {
+      document.getElementById("shop-panel").style.display = "block";
+      enableActionButtons(false);
+      let shopList = document.getElementById("shop-list");
+      shopList.innerHTML = "";
+      shopItems.forEach((item, index) => {
+        let li = document.createElement("li");
+        li.textContent = `${item.name} - ${item.price} ${item.currency === "gold" ? "Gold" : "Pouvoirs"}`;
+        let btn = document.createElement("button");
+        btn.textContent = "Acheter";
+        btn.className = "item-btn";
+        btn.addEventListener("click", function(){
+          if (item.currency === "gold") {
+            if (player.gold >= item.price) {
+              player.gold -= item.price;
+              logMessage(`Vous achetez ${item.name} pour ${item.price} Gold.`);
+              player.inventory.push(item.name);
+            } else {
+              logMessage("Pas assez de Gold !");
+            }
+          } else if (item.currency === "power") {
+            if (player.powerPoints >= item.price) {
+              player.powerPoints -= item.price;
+              logMessage(`Vous achetez ${item.name} pour ${item.price} Pouvoirs.`);
+              // Pour une amélioration, applique directement le bonus (ici, par exemple, Force)
+              if (item.effect === "power") {
+                player.stats.force += item.bonus;
+                logMessage(`Votre Force augmente de ${item.bonus} grâce à ${item.name}.`);
+              }
+            } else {
+              logMessage("Pas assez de Pouvoirs !");
+            }
+          }
+          updatePlayerUI();
+          updateInventoryPanel();
+        });
+        li.appendChild(btn);
+        shopList.appendChild(li);
+      });
+    }
+
+    function closeShopPanel() {
+      document.getElementById("shop-panel").style.display = "none";
+      enableActionButtons(true);
+    }
+
+    /**********************************
+     * Inventaire & Utilisation des objets
+     **********************************/
+    function showInventoryPanel() {
+      document.getElementById("inventory-panel").style.display = "block";
+      enableActionButtons(false);
+      updateInventoryPanel();
+    }
+
+    function updateInventoryPanel() {
+      let invList = document.getElementById("inventory-list");
+      invList.innerHTML = "";
+      if (player.inventory.length === 0) {
+        let li = document.createElement("li");
+        li.textContent = "Inventaire vide.";
+        invList.appendChild(li);
+      } else {
+        player.inventory.forEach((item, index) => {
+          let li = document.createElement("li");
+          li.textContent = item;
+          let btn = document.createElement("button");
+          btn.textContent = "Utiliser";
+          btn.className = "item-btn";
+          btn.addEventListener("click", function(){
+            useItem(item, index);
+          });
+          // Pour objets équipables, proposer "Équiper"
+          let shopItem = shopItems.find(i => i.name === item);
+          if (shopItem && (shopItem.type === "arme" || shopItem.type === "armure")) {
+            let equipBtn = document.createElement("button");
+            equipBtn.textContent = "Équiper";
+            equipBtn.className = "item-btn";
+            equipBtn.addEventListener("click", function(){
+              equipItem(item, index);
+            });
+            li.appendChild(equipBtn);
+          }
+          li.appendChild(btn);
+          invList.appendChild(li);
+        });
+      }
+    }
+
+    function closeInventoryPanel() {
+      document.getElementById("inventory-panel").style.display = "none";
+      enableActionButtons(true);
+    }
+
+    function useItem(item, index) {
+      let shopItem = shopItems.find(i => i.name === item);
+      if (!shopItem) {
+        logMessage("Objet inconnu.");
+        return;
+      }
+      if (shopItem.effect === "heal") {
+        player.hp = Math.min(player.hp + shopItem.value, player.maxhp);
+        logMessage(`Vous utilisez ${shopItem.name} et regagnez ${shopItem.value} PV.`);
+      } else if (shopItem.effect === "mana") {
+        player.mana = Math.min(player.mana + shopItem.value, player.maxmana);
+        logMessage(`Vous utilisez ${shopItem.name} et regagnez ${shopItem.value} Mana.`);
+      } else if (shopItem.effect === "regen") {
+        player.hp = Math.min(player.hp + shopItem.value, player.maxhp);
+        logMessage(`Vous utilisez ${shopItem.name} et récupérez ${shopItem.value} PV.`);
+      } else if (shopItem.effect === "invuln") {
+        logMessage(`Vous utilisez ${shopItem.name} et êtes invulnérable pendant 2 tours !`);
+        // Effet à définir
+      } else if (shopItem.effect === "boost") {
+        logMessage(`Vous utilisez ${shopItem.name} et votre force augmente de ${shopItem.value} pour ce combat !`);
+        player.stats.force += shopItem.value;
+      } else {
+        logMessage(`L'objet ${shopItem.name} ne peut pas être utilisé directement.`);
+        return;
+      }
+      player.inventory.splice(index, 1);
+      updatePlayerUI();
+      updateInventoryPanel();
+    }
+
+    /**********************************
+     * Équipement
+     **********************************/
+    function showEquipmentPanel() {
+      document.getElementById("equipment-panel").style.display = "block";
+      updateEquipmentPanel();
+      enableActionButtons(false);
+    }
+
+    function updateEquipmentPanel() {
+      document.getElementById("equip-weapon").textContent = player.equipment.weapon ? player.equipment.weapon : "Aucune";
+      document.getElementById("equip-armor").textContent = player.equipment.armor ? player.equipment.armor : "Aucune";
+    }
+
+    function equipItem(item, index) {
+      let shopItem = shopItems.find(i => i.name === item);
+      if (!shopItem) {
+        logMessage("Objet inconnu.");
+        return;
+      }
+      if (shopItem.type === "arme") {
+        player.equipment.weapon = item;
+        logMessage(`Vous équipez ${item} comme arme.`);
+      } else if (shopItem.type === "armure") {
+        player.equipment.armor = item;
+        logMessage(`Vous équipez ${item} comme armure.`);
+      } else {
+        logMessage("Cet objet ne peut pas être équipé.");
+        return;
+      }
+      player.inventory.splice(index, 1);
+      updateEquipmentPanel();
+      updateInventoryPanel();
+      updatePlayerUI();
+    }
+
+    function unequipItem(type) {
+      if (type === "arme" && player.equipment.weapon) {
+        player.inventory.push(player.equipment.weapon);
+        logMessage(`Vous déséquipez ${player.equipment.weapon} de votre arme.`);
+        player.equipment.weapon = null;
+      } else if (type === "armure" && player.equipment.armor) {
+        player.inventory.push(player.equipment.armor);
+        logMessage(`Vous déséquipez ${player.equipment.armor} de votre armure.`);
+        player.equipment.armor = null;
+      } else {
+        logMessage("Aucun équipement à déséquiper dans ce slot.");
+      }
+      updateEquipmentPanel();
+      updateInventoryPanel();
+      updatePlayerUI();
+    }
+
+    /**********************************
+     * Panneau des Sorts
+     **********************************/
+    function showSpellsPanel() {
+      document.getElementById("spells-panel").style.display = "block";
+      updateSpellsPanel();
+      enableActionButtons(false);
+    }
+
+    function updateSpellsPanel() {
+      let spellsList = document.getElementById("spells-list");
+      spellsList.innerHTML = "";
+      spells.forEach((spell, index) => {
+        let li = document.createElement("li");
+        li.textContent = `${spell.name} - Coût: ${spell.cost} Mana, Dégâts de base: ${spell.baseDamage}`;
+        let btn = document.createElement("button");
+        btn.textContent = "Lancer";
+        btn.className = "item-btn";
+        btn.addEventListener("click", function(){
+          document.getElementById("spells-panel").style.display = "none";
+          castSelectedSpell(spell);
+          // Ne pas appeler endPlayerTurn ici pour éviter que le sort ne frappe deux fois
+        });
+        li.appendChild(btn);
+        spellsList.appendChild(li);
+      });
+    }
+
+    function closeSpellsPanel() {
+      document.getElementById("spells-panel").style.display = "none";
+      enableActionButtons(true);
+    }
+
+    /**********************************
+     * Boutons et Événements
+     **********************************/
+    document.getElementById("attack-btn").addEventListener("click", playerAttack);
+    document.getElementById("spell-btn").addEventListener("click", playerCastSpell);
+    document.getElementById("item-btn").addEventListener("click", playerUseItem);
+    document.getElementById("defend-btn").addEventListener("click", playerDefend);
+    document.getElementById("shop-btn").addEventListener("click", showShopPanel);
+    document.getElementById("equip-btn").addEventListener("click", showEquipmentPanel);
+    document.getElementById("restart-btn").addEventListener("click", function(){ location.reload(); });
+    document.getElementById("levelup-close-btn").addEventListener("click", closeLevelUpPanel);
+    document.getElementById("close-shop-btn").addEventListener("click", closeShopPanel);
+    document.getElementById("close-inv-btn").addEventListener("click", closeInventoryPanel);
+    document.getElementById("close-equip-btn").addEventListener("click", function(){
+      document.getElementById("equipment-panel").style.display = "none";
+      enableActionButtons(true);
+    });
+    document.getElementById("close-spells-btn").addEventListener("click", closeSpellsPanel);
+
+    let levelupBtns = document.querySelectorAll("#levelup-panel .button[data-stat]");
+    levelupBtns.forEach(function(btn) {
+      btn.addEventListener("click", function(){
+        let stat = btn.getAttribute("data-stat");
+        allocatePoint(stat);
+      });
+    });
+
+    document.getElementById("unequip-weapon-btn").addEventListener("click", function(){ unequipItem("arme"); });
+    document.getElementById("unequip-armor-btn").addEventListener("click", function(){ unequipItem("armure"); });
+
+    /**********************************
+     * Démarrage du Jeu
+     **********************************/
+    function initGame() {
+      updatePlayerUI();
+      clearBattleLog();
+      logMessage("Bienvenue dans Solo Leveling Ultimate - Version Finale !");
+      setTimeout(() => { startCombat(); }, 1500);
+    }
+
+    initGame();
+  </script>
+</body>
+</html>
